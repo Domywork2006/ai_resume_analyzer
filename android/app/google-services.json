@@ -12,7 +12,20 @@
           "package_name": "com.example.ai_resume_analyzer"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "345955646134-r6a4t6jb68qtk4jv17gvg5bjgf9q35mq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.ai_resume_analyzer",
+            "certificate_hash": "b46b305899a5f4b8953cbdf807ab649ecba85030"
+          }
+        },
+        {
+          "client_id": "345955646134-jee1etifdgk31mv6t4957vhbqhorqoak.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBAMmg1qvK-HFllxV5cbMABsyEN_UmiVfI"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "345955646134-jee1etifdgk31mv6t4957vhbqhorqoak.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "345955646134-pvtsgnfro3muc71ljc6nbnevuoh0j2js.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.aiResumeAnalyzer"
+              }
+            }
+          ]
         }
       }
     }
