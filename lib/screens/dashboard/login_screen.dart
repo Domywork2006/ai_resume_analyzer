@@ -3,33 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../../constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
+import 'dashboard_screen.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
-
-  @override
-  State<LoginScreen> createState() => _LoginScreenState();
-}
-
-class _LoginScreenState extends State<LoginScreen> {
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Watch for login errors and show them
-    final authProvider = context.read<AuthProvider>();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (authProvider.error != null && mounted) {
-        debugPrint('🚨 Login error detected: ${authProvider.error}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Login failed: ${authProvider.error}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,8 +56,6 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 30),
               Consumer<AuthProvider>(
                 builder: (context, authProvider, _) {
-                  debugPrint('🎯 LoginScreen rebuilt - isLoading: ${authProvider.isLoading}, user: ${authProvider.user?.email ?? "null"}');
-                  
                   return SizedBox(
                     width: double.infinity,
                     height: 55,
@@ -88,12 +63,28 @@ class _LoginScreenState extends State<LoginScreen> {
                       onPressed: authProvider.isLoading
                           ? null
                           : () async {
-                              debugPrint('▶️ Login button pressed');
-                              await authProvider.login();
-                              debugPrint('✓ login() completed, AuthWrapper will handle navigation');
-                              // DON'T navigate manually! Let AuthWrapper handle it via Consumer
-                              // When authProvider.user is set, AuthWrapper will automatically
-                              // switch from LoginScreen to DashboardScreen
+                              try {
+                                await authProvider.login();
+                                if (context.mounted &&
+                                    authProvider.user != null) {
+                                  Navigator.of(context).pushReplacement(
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const DashboardScreen(),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(
+                                    SnackBar(
+                                      content: Text('Login failed: $e'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              }
                             },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.secondary,
