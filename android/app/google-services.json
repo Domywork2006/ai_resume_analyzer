@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "345955646134",
+    "project_id": "ai-resume-analyzer-f2baa",
+    "storage_bucket": "ai-resume-analyzer-f2baa.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:345955646134:android:70303a7615ef861d0e4417",
+        "android_client_info": {
+          "package_name": "com.example.ai_resume_analyzer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBAMmg1qvK-HFllxV5cbMABsyEN_UmiVfI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
