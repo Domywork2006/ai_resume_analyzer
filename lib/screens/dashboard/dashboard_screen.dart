@@ -3,12 +3,15 @@ import 'package:provider/provider.dart';
 
 import '../../constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/resume_provider.dart';
 import '../../widgets/profile_header.dart';
 import '../../widgets/info_card.dart';
 import '../../widgets/stats_card.dart';
 import '../../widgets/action_button.dart';
 import '../../widgets/section_header.dart';
 import '../auth/login_screen.dart';
+import '../upload/upload_resume_screen.dart';
+import '../upload/view_resumes_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -113,11 +116,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           children: [
-                            StatsCard(
-                              label: 'Resumes',
-                              value: '0',
-                              icon: Icons.description,
-                              accentColor: AppColors.secondary,
+                            Consumer<ResumeProvider>(
+                              builder: (context, rp, _) => StatsCard(
+                                label: 'Resumes',
+                                value: rp.resumeCount.toString(),
+                                icon: Icons.description,
+                                accentColor: AppColors.secondary,
+                              ),
                             ),
                             StatsCard(
                               label: 'Analyses',
@@ -197,9 +202,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               icon: Icons.upload_file,
                               onPressed: () {
                                 debugPrint('📤 Upload Resume tapped');
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Upload feature coming soon'),
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const UploadResumeScreen(),
                                   ),
                                 );
                               },
@@ -211,9 +216,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               backgroundColor: AppColors.secondary,
                               onPressed: () {
                                 debugPrint('👀 View Resumes tapped');
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('My Resumes page coming soon'),
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const ViewResumesScreen(),
                                   ),
                                 );
                               },
