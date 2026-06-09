@@ -5,6 +5,7 @@ import '../../constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/resume_provider.dart';
 import '../../services/firebase_service.dart';
+import '../../services/settings_service.dart';
 import '../../widgets/action_button.dart';
 import '../../models/analysis_model.dart';
 import '../profile/profile_screen.dart';
@@ -20,6 +21,7 @@ class UploadResumeScreen extends StatefulWidget {
 
 class _UploadResumeScreenState extends State<UploadResumeScreen> {
   final FirebaseService _firebaseService = FirebaseService();
+  final SettingsService _settingsService = SettingsService();
   String? _apiKey;
   bool _isLoadingKey = true;
 
@@ -36,33 +38,57 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
 
   Future<void> _checkApiKey() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (auth.user != null) {
-      try {
-        String? key = await _firebaseService.getUserApiKey(auth.user!.uid);
-        
-        // Fallback to global constant if Firestore key is empty
-        if ((key == null || key.trim().isEmpty) && ApiKeys.geminiApiKey.isNotEmpty) {
-          key = ApiKeys.geminiApiKey;
-        }
+    final user = auth.user;
 
+    // 1. Try loading from SharedPreferences first (instant and reliable)
+    try {
+      final localKey = await _settingsService.getLocalApiKey();
+      if (localKey != null && localKey.isNotEmpty) {
         if (mounted) {
           setState(() {
-            _apiKey = key;
-            _isLoadingKey = false;
-          });
-        }
-      } catch (e) {
-        debugPrint('❌ Error checking API key: $e');
-        
-        // Fallback to global constant if Firestore fetch failed
-        final fallbackKey = ApiKeys.geminiApiKey.isNotEmpty ? ApiKeys.geminiApiKey : null;
-        if (mounted) {
-          setState(() {
-            _apiKey = fallbackKey;
+            _apiKey = localKey;
             _isLoadingKey = false;
           });
         }
       }
+    } catch (e) {
+      debugPrint('❌ Local API key load error in upload screen: $e');
+    }
+
+    // 2. Try loading from Firestore in background to sync
+    if (user != null) {
+      try {
+        final firestoreKey = await _firebaseService.getUserApiKey(user.uid);
+        if (firestoreKey != null && firestoreKey.isNotEmpty) {
+          if (_apiKey != firestoreKey) {
+            await _settingsService.saveLocalApiKey(firestoreKey);
+            if (mounted) {
+              setState(() {
+                _apiKey = firestoreKey;
+              });
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('❌ Cloud API key load error in upload screen: $e');
+      }
+    }
+
+    // 3. Fallback to compile-time constant if both are empty
+    if (_apiKey == null || _apiKey!.trim().isEmpty) {
+      if (ApiKeys.geminiApiKey.isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            _apiKey = ApiKeys.geminiApiKey;
+          });
+        }
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLoadingKey = false;
+      });
     }
   }
 
@@ -303,8 +329,8 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
                   label: 'Start AI Analysis',
                   icon: Icons.rocket_launch,
                   backgroundColor: AppColors.primary,
-                  onPressed: rp.selectedFile == null || rp.isLoading || _isLoadingKey || isApiKeyMissing
-                      ? () {}
+                  onPressed: rp.selectedFile == null || rp.isLoading
+                      ? null
                       : () => _startAnalysis(rp),
                 ),
               ],

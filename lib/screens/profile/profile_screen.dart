@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/firebase_service.dart';
+import '../../services/settings_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -13,6 +14,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final FirebaseService _firebaseService = FirebaseService();
+  final SettingsService _settingsService = SettingsService();
   final TextEditingController _apiKeyController = TextEditingController();
   bool _isSaving = false;
   bool _isLoadingKey = true;
@@ -32,16 +34,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadApiKey() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final user = authProvider.user;
+
+    // 1. Try loading from local storage first
+    try {
+      final localKey = await _settingsService.getLocalApiKey();
+      if (localKey != null && localKey.isNotEmpty && mounted) {
+        _apiKeyController.text = localKey;
+        setState(() {
+          _isLoadingKey = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Local API key load error: $e');
+    }
+
+    // 2. Load from Firestore in parallel to sync
     if (user != null) {
       try {
-        final key = await _firebaseService.getUserApiKey(user.uid);
-        if (key != null && mounted) {
-          _apiKeyController.text = key;
+        final firestoreKey = await _firebaseService.getUserApiKey(user.uid);
+        if (firestoreKey != null && firestoreKey.isNotEmpty && mounted) {
+          if (_apiKeyController.text != firestoreKey) {
+            _apiKeyController.text = firestoreKey;
+            await _settingsService.saveLocalApiKey(firestoreKey);
+          }
         }
       } catch (e) {
-        debugPrint('❌ Error loading API key: $e');
+        debugPrint('❌ Cloud API key load error: $e');
       }
     }
+    
     if (mounted) {
       setState(() {
         _isLoadingKey = false;
@@ -52,40 +73,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _saveApiKey() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final user = authProvider.user;
-    if (user == null) return;
+
+    final apiKey = _apiKeyController.text.trim();
+    if (apiKey.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('API Key cannot be empty'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
 
     setState(() {
       _isSaving = true;
     });
 
-    try {
-      await _firebaseService.saveUserApiKey(
-        uid: user.uid,
-        apiKey: _apiKeyController.text.trim(),
+    // 1. Save locally (guaranteed to succeed)
+    await _settingsService.saveLocalApiKey(apiKey);
+
+    // 2. Try syncing to Firestore
+    bool syncedToCloud = false;
+    if (user != null) {
+      try {
+        await _firebaseService.saveUserApiKey(
+          uid: user.uid,
+          apiKey: apiKey,
+        );
+        syncedToCloud = true;
+      } catch (e) {
+        debugPrint('⚠️ Cloud sync failed (saved locally only): $e');
+      }
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(syncedToCloud
+              ? 'Gemini API Key saved and synced to cloud!'
+              : 'Gemini API Key saved locally on this device!'),
+          backgroundColor: AppColors.primary,
+        ),
       );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Gemini API Key saved successfully!'),
-            backgroundColor: AppColors.primary,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to save API key: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSaving = false;
-        });
-      }
+      setState(() {
+        _isSaving = false;
+      });
     }
   }
 

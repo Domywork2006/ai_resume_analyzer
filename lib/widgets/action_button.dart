@@ -3,7 +3,7 @@ import '../constants/app_colors.dart';
 
 class ActionButton extends StatelessWidget {
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final IconData? icon;
   final bool isLoading;
   final bool isOutlined;
@@ -14,7 +14,7 @@ class ActionButton extends StatelessWidget {
 
   const ActionButton({
     required this.label,
-    required this.onPressed,
+    this.onPressed,
     this.icon,
     this.isLoading = false,
     this.isOutlined = false,
