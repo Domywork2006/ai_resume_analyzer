@@ -9,6 +9,7 @@ import '../../widgets/action_button.dart';
 import '../../models/analysis_model.dart';
 import '../profile/profile_screen.dart';
 import '../analysis/analysis_screen.dart';
+import '../../constants/api_keys.dart';
 
 class UploadResumeScreen extends StatefulWidget {
   const UploadResumeScreen({super.key});
@@ -37,7 +38,13 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (auth.user != null) {
       try {
-        final key = await _firebaseService.getUserApiKey(auth.user!.uid);
+        String? key = await _firebaseService.getUserApiKey(auth.user!.uid);
+        
+        // Fallback to global constant if Firestore key is empty
+        if ((key == null || key.trim().isEmpty) && ApiKeys.geminiApiKey.isNotEmpty) {
+          key = ApiKeys.geminiApiKey;
+        }
+
         if (mounted) {
           setState(() {
             _apiKey = key;
@@ -46,8 +53,12 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
         }
       } catch (e) {
         debugPrint('❌ Error checking API key: $e');
+        
+        // Fallback to global constant if Firestore fetch failed
+        final fallbackKey = ApiKeys.geminiApiKey.isNotEmpty ? ApiKeys.geminiApiKey : null;
         if (mounted) {
           setState(() {
+            _apiKey = fallbackKey;
             _isLoadingKey = false;
           });
         }
