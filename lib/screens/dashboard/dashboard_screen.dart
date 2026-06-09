@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../../constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/resume_provider.dart';
@@ -12,6 +11,7 @@ import '../../widgets/section_header.dart';
 import '../auth/login_screen.dart';
 import '../upload/upload_resume_screen.dart';
 import '../upload/view_resumes_screen.dart';
+import '../profile/profile_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -47,13 +47,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AuthProvider>(
-      builder: (context, authProvider, _) {
+    return Consumer2<AuthProvider, ResumeProvider>(
+      builder: (context, authProvider, resumeProvider, _) {
         final user = authProvider.user;
-        debugPrint('📊 DashboardScreen rebuilt - user: ${user?.email ?? "null"}');
 
         if (user == null) {
-          debugPrint('❌ DashboardScreen: user is null!');
           return Scaffold(
             body: Center(
               child: Column(
@@ -65,7 +63,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     color: AppColors.primary.withValues(alpha: 0.3),
                   ),
                   const SizedBox(height: 16),
-                  Text(
+                  const Text(
                     'No user logged in',
                     style: TextStyle(
                       color: AppColors.textSecondary,
@@ -78,34 +76,68 @@ class _DashboardScreenState extends State<DashboardScreen> {
           );
         }
 
-        debugPrint('✓ DashboardScreen: User authenticated: ${user.email}');
+        final recentAnalysisName = resumeProvider.analyses.isNotEmpty
+            ? resumeProvider.analyses.first['fileName'] as String? ?? 'N/A'
+            : 'None';
+
+        final avgScore = resumeProvider.analyses.isEmpty
+            ? 0
+            : (resumeProvider.analyses
+                        .map((a) => a['atsScore'] as int? ?? 0)
+                        .fold<int>(0, (sum, score) => sum + score) /
+                    resumeProvider.analyses.length)
+                .round();
+
         return Scaffold(
+          backgroundColor: AppColors.background,
           body: CustomScrollView(
             controller: _scrollController,
             slivers: [
-              // App Bar with Profile Header
+              // Pinned App Bar with Profile Header & Settings Action
               SliverAppBar(
                 expandedHeight: 220,
                 floating: false,
                 pinned: true,
-                elevation: _showElevation ? 8 : 0,
-                backgroundColor: AppColors.background,
+                elevation: _showElevation ? 4 : 0,
+                backgroundColor: AppColors.secondary,
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.settings, color: Colors.white, size: 28),
+                    tooltip: 'Settings & API Key',
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const ProfileScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 flexibleSpace: FlexibleSpaceBar(
-                  background: ProfileHeader(user: user),
+                  background: ProfileHeader(
+                    user: user,
+                    onEditProfile: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const ProfileScreen(),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
-              // Main Content
+              
+              // Dashboard content
               SliverToBoxAdapter(
-                child: SingleChildScrollView(
-                  physics: const NeverScrollableScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
                   child: Column(
                     children: [
-                      const SizedBox(height: 8),
-
-                      // Stats Section
+                      // Analytics Statistics Section
                       SectionHeader(
-                        title: 'Your Stats',
-                        subtitle: 'Track your resume activity',
+                        title: 'ATS Analytics',
+                        subtitle: 'Overview of resume evaluations',
                       ),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -116,72 +148,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           children: [
-                            Consumer<ResumeProvider>(
-                              builder: (context, rp, _) => StatsCard(
-                                label: 'Resumes',
-                                value: rp.resumeCount.toString(),
-                                icon: Icons.description,
-                                accentColor: AppColors.secondary,
-                              ),
+                            StatsCard(
+                              label: 'Evaluations',
+                              value: resumeProvider.analysisCount.toString(),
+                              icon: Icons.analytics_outlined,
+                              accentColor: AppColors.primary, // NVIDIA Green
                             ),
                             StatsCard(
-                              label: 'Analyses',
-                              value: '0',
-                              icon: Icons.analytics,
-                              accentColor: Colors.blue,
+                              label: 'Highest Score',
+                              value: resumeProvider.analyses.isEmpty
+                                  ? 'N/A'
+                                  : '${resumeProvider.highestAtsScore}%',
+                              icon: Icons.emoji_events_outlined,
+                              accentColor: Colors.amber[700]!,
                             ),
                             StatsCard(
                               label: 'Avg Score',
-                              value: 'N/A',
-                              subtitle: 'ATS Score',
+                              value: resumeProvider.analyses.isEmpty
+                                  ? 'N/A'
+                                  : '$avgScore%',
+                              subtitle: 'ATS Match Rate',
                               icon: Icons.trending_up,
-                              accentColor: Colors.green,
+                              accentColor: Colors.teal,
                             ),
                             StatsCard(
-                              label: 'Last Review',
-                              value: 'Today',
-                              icon: Icons.calendar_today,
-                              accentColor: Colors.purple,
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Account Information Section
-                      const SizedBox(height: 24),
-                      SectionHeader(
-                        title: 'Account',
-                        subtitle: 'Your account details',
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Column(
-                          children: [
-                            InfoCard(
-                              title: 'Email Address',
-                              value: user.email ?? 'N/A',
-                              icon: Icons.email,
-                              iconColor: AppColors.primary,
-                            ),
-                            const SizedBox(height: 12),
-                            InfoCard(
-                              title: 'Account Status',
-                              value: user.emailVerified
-                                  ? 'Verified'
-                                  : 'Unverified',
-                              icon: user.emailVerified
-                                  ? Icons.verified
-                                  : Icons.info,
-                              iconColor: user.emailVerified
-                                  ? Colors.green
-                                  : Colors.orange,
-                            ),
-                            const SizedBox(height: 12),
-                            InfoCard(
-                              title: 'User ID',
-                              value: user.uid,
-                              icon: Icons.person,
-                              iconColor: AppColors.secondary,
+                              label: 'Recent Resume',
+                              value: recentAnalysisName,
+                              icon: Icons.history_outlined,
+                              accentColor: Colors.blueGrey,
                             ),
                           ],
                         ),
@@ -191,17 +185,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SizedBox(height: 24),
                       SectionHeader(
                         title: 'Quick Actions',
-                        subtitle: 'Get started',
+                        subtitle: 'Evaluate or manage your resumes',
                       ),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Column(
                           children: [
                             ActionButton(
-                              label: 'Upload Resume',
-                              icon: Icons.upload_file,
+                              label: 'Analyze New Resume',
+                              icon: Icons.upload_file_outlined,
+                              backgroundColor: AppColors.primary, // NVIDIA green accent
                               onPressed: () {
-                                debugPrint('📤 Upload Resume tapped');
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
                                     builder: (_) => const UploadResumeScreen(),
@@ -211,11 +205,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                             const SizedBox(height: 12),
                             ActionButton(
-                              label: 'View My Resumes',
-                              icon: Icons.file_present,
+                              label: 'View Analysis History',
+                              icon: Icons.history,
                               backgroundColor: AppColors.secondary,
                               onPressed: () {
-                                debugPrint('👀 View Resumes tapped');
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
                                     builder: (_) => const ViewResumesScreen(),
@@ -227,49 +220,71 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
 
-                      // Session Section
+                      // Account details summary card
                       const SizedBox(height: 24),
                       SectionHeader(
-                        title: 'Session',
-                        subtitle: 'Manage your account',
+                        title: 'User Profile',
+                        subtitle: 'Linked credentials',
                       ),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Column(
-                          children: [
-                            ActionButton(
-                              label: 'Logout',
-                              icon: Icons.logout,
-                              isOutlined: true,
-                              onPressed: () async {
-                                debugPrint('🔓 Logout tapped');
-                                try {
-                                  await authProvider.logout();
-                                  if (context.mounted) {
-                                    Navigator.of(context).pushReplacement(
-                                      MaterialPageRoute(
-                                        builder: (_) => const LoginScreen(),
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  debugPrint('❌ Logout error: $e');
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Logout failed: $e'),
-                                        backgroundColor: Colors.red,
-                                        duration: const Duration(seconds: 3),
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
+                        child: Card(
+                          color: AppColors.card,
+                          elevation: 1,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              children: [
+                                InfoCard(
+                                  title: 'Email Address',
+                                  value: user.email ?? 'N/A',
+                                  icon: Icons.email_outlined,
+                                  iconColor: AppColors.primary,
+                                ),
+                                const Divider(height: 20),
+                                InfoCard(
+                                  title: 'Account Verification',
+                                  value: user.emailVerified ? 'Verified' : 'Unverified',
+                                  icon: user.emailVerified ? Icons.verified_user : Icons.gpp_maybe,
+                                  iconColor: user.emailVerified ? AppColors.primary : Colors.orange,
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
 
+                      // Session Controls
+                      const SizedBox(height: 24),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: ActionButton(
+                          label: 'Sign Out',
+                          icon: Icons.logout_outlined,
+                          isOutlined: true,
+                          onPressed: () async {
+                            try {
+                              await authProvider.logout();
+                              if (context.mounted) {
+                                Navigator.of(context).pushReplacement(
+                                  MaterialPageRoute(
+                                    builder: (_) => const LoginScreen(),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Logout failed: $e')),
+                                );
+                              }
+                            }
+                          },
+                        ),
+                      ),
                       const SizedBox(height: 32),
                     ],
                   ),
