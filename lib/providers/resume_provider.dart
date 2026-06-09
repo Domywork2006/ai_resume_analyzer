@@ -169,7 +169,7 @@ class ResumeProvider extends ChangeNotifier {
       statusMessage = 'Analyzing with Gemini AI (this may take a few seconds)...';
       notifyListeners();
       
-      final result = await _geminiService.analyzeResume(extractedText, apiKey);
+      final AnalysisModel result = await _geminiService.analyzeResume(extractedText, apiKey);
       
       atsScore = result.atsScore;
       strengths = result.strengths;

@@ -262,7 +262,7 @@ class AnalysisScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.top(2.0),
+            padding: const EdgeInsets.only(top: 2.0),
             child: Icon(icon, color: iconColor, size: 16),
           ),
           const SizedBox(width: 10),

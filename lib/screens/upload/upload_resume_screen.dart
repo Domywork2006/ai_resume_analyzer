@@ -113,7 +113,6 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = Provider.of<AuthProvider>(context);
     final rp = Provider.of<ResumeProvider>(context);
 
     final isApiKeyMissing = _apiKey == null || _apiKey!.trim().isEmpty;
